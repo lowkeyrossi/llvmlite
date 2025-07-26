@@ -21,7 +21,20 @@ build_dir = os.path.join(here_dir, 'build')
 target_dir = os.path.join(os.path.dirname(here_dir), 'llvmlite', 'binding')
 
 is_64bit = sys.maxsize >= 2**32
-is_arm64 = platform.machine().lower() in ('arm64', 'aarch64')
+
+
+def get_arch():
+    """Detect the target architecture"""
+    machine = platform.machine().lower()
+    if machine in ('amd64', 'x86_64'):
+        return 'x64'
+    elif machine in ('arm64', 'aarch64'):
+        return 'ARM64'
+    elif machine in ('x86', 'i386', 'i686'):
+        return 'Win32'
+    else:
+        return 'x64' if is_64bit else 'Win32'
+
 
 def try_cmake(cmake_dir, build_dir, generator, arch=None, toolkit=None):
     old_dir = os.getcwd()
@@ -71,22 +84,31 @@ def find_windows_generator():
     cmake_dir = os.path.join(here_dir, 'dummy')
     # LLVM 9.0 and later needs VS 2017 minimum.
     generators = []
+    
+    # Detect target architecture
+    target_arch = get_arch()
+    print(f"Detected target architecture: {target_arch}")
+    
     env_generator = os.environ.get("CMAKE_GENERATOR", None)
     if env_generator is not None:
-        env_arch = os.environ.get("CMAKE_GENERATOR_ARCH", None)
+        env_arch = os.environ.get("CMAKE_GENERATOR_ARCH", target_arch)
         env_toolkit = os.environ.get("CMAKE_GENERATOR_TOOLKIT", None)
         generators.append(
             (env_generator, env_arch, env_toolkit)
         )
 
     generators.extend([
-        # use VS2022 first
-        ('Visual Studio 17 2022', ('ARM64' if is_arm64 else ('x64' if is_64bit else 'Win32')), 'v143'),
-        # try VS2019 next
-        ('Visual Studio 16 2019', ('ARM64' if is_arm64 else ('x64' if is_64bit else 'Win32')), 'v142'),
+        # use VS2022 first - supports ARM64
+        ('Visual Studio 17 2022', target_arch, 'v143'),
+        # try VS2019 next - also supports ARM64
+        ('Visual Studio 16 2019', target_arch, 'v142'),
+        # fallback to x64 if ARM64 detection fails
+        ('Visual Studio 17 2022', 'x64', 'v143'),
+        ('Visual Studio 16 2019', 'x64', 'v142'),
         # # This is the generator configuration for VS2017
         # ('Visual Studio 15 2017' + (' Win64' if is_64bit else ''), None, None)
     ])
+    
     for generator in generators:
         build_dir = tempfile.mkdtemp()
         print("Trying generator %r" % (generator,))
@@ -96,6 +118,7 @@ def find_windows_generator():
             continue
         else:
             # Success
+            print(f"Successfully configured with generator: {generator}")
             return generator
         finally:
             shutil.rmtree(build_dir)
