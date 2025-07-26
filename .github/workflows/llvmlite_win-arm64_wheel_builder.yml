@@ -1,0 +1,104 @@
+name: llvmlite_win-arm64_wheel_builder
+on:
+  push:
+    branches:
+      - WoA
+# Add concurrency control
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+env:
+  VALIDATION_PYTHON_VERSION: "3.12"
+  ARTIFACT_RETENTION_DAYS: 7
+  LLVM_VERSION: "15.0.7"
+  LLVM_INSTALL_PREFIX: "C:\\llvm-arm64"
+jobs:
+  win-arm64-build:
+    name: win-arm64-build
+    runs-on: windows-11-arm
+    defaults:
+      run:
+        shell: bash -elx {0}
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+      fail-fast: false
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+        with:
+          arch: arm64
+
+      - name: Install Ninja
+        run: |
+          choco install ninja
+          ninja --version
+
+      - name: Download LLVM source
+        run: |
+          curl -L -o llvm-${{ env.LLVM_VERSION }}.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_VERSION }}/llvm-project-${{ env.LLVM_VERSION }}.src.tar.xz
+          tar -xf llvm-${{ env.LLVM_VERSION }}.src.tar.xz
+          mv llvm-project-${{ env.LLVM_VERSION }}.src llvm-project
+
+      - name: Build LLVM-Dev for Win-ARM64
+        run: |
+          mkdir llvm-build
+          cd llvm-build
+          cmake -G Ninja \
+            -DLLVM_ENABLE_PROJECTS="clang;lld" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=${{ env.LLVM_INSTALL_PREFIX }} \
+            -DLLVM_TARGETS_TO_BUILD="AArch64;X86" \
+            -DLLVM_DEFAULT_TARGET_TRIPLE="aarch64-pc-windows-msvc" \
+            -DLLVM_HOST_TRIPLE="aarch64-pc-windows-msvc" \
+            -DCMAKE_C_COMPILER=cl \
+            -DCMAKE_CXX_COMPILER=cl \
+            ../llvm-project/llvm
+          ninja
+          ninja install
+
+      - name: Setup vcpkg and install libxml2
+        run: |
+          git clone https://github.com/Microsoft/vcpkg.git
+          cd vcpkg
+          ./bootstrap-vcpkg.bat
+          ./vcpkg install libxml2:arm64-windows
+          echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build wheel setuptools
+          
+      - name: Configure environment for llvmlite build
+        run: |
+          echo "LLVM_CONFIG=${{ env.LLVM_INSTALL_PREFIX }}\\lib\\cmake\\llvm\\LLVMConfig.cmake" >> $GITHUB_ENV
+          echo "LLVM_DIR=${{ env.LLVM_INSTALL_PREFIX }}\\lib\\cmake\\llvm" >> $GITHUB_ENV
+          echo "XML2_ROOT=${{ env.VCPKG_ROOT }}\\installed\\arm64-windows" >> $GITHUB_ENV
+          echo "${{ env.LLVM_INSTALL_PREFIX }}\\bin" >> $GITHUB_PATH
+
+      - name: Build wheel
+        run: |
+          python -m build
+
+      - name: Upload llvmlite wheel
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: llvmlite-win-arm64-py${{ matrix.python-version }}
+          path: dist/*.whl
+          compression-level: 0
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+          if-no-files-found: error
+
+      - name: Show Workflow Run ID
+        run: "echo \"Workflow Run ID: ${{ github.run_id }}\""
