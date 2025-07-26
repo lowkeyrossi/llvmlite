@@ -13,6 +13,7 @@ import subprocess
 import shutil
 import sys
 import tempfile
+import platform
 
 
 here_dir = os.path.abspath(os.path.dirname(__file__))
@@ -20,7 +21,7 @@ build_dir = os.path.join(here_dir, 'build')
 target_dir = os.path.join(os.path.dirname(here_dir), 'llvmlite', 'binding')
 
 is_64bit = sys.maxsize >= 2**32
-
+is_arm64 = platform.machine().lower() in ('arm64', 'aarch64')
 
 def try_cmake(cmake_dir, build_dir, generator, arch=None, toolkit=None):
     old_dir = os.getcwd()
@@ -80,9 +81,9 @@ def find_windows_generator():
 
     generators.extend([
         # use VS2022 first
-        ('Visual Studio 17 2022', ('x64' if is_64bit else 'Win32'), 'v143'),
+        ('Visual Studio 17 2022', ('ARM64' if is_arm64 else ('x64' if is_64bit else 'Win32')), 'v143'),
         # try VS2019 next
-        ('Visual Studio 16 2019', ('x64' if is_64bit else 'Win32'), 'v142'),
+        ('Visual Studio 16 2019', ('ARM64' if is_arm64 else ('x64' if is_64bit else 'Win32')), 'v142'),
         # # This is the generator configuration for VS2017
         # ('Visual Studio 15 2017' + (' Win64' if is_64bit else ''), None, None)
     ])
