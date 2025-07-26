@@ -51,16 +51,20 @@ jobs:
           Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
           Expand-Archive -Path $zipPath -DestinationPath "C:\llvm-unpack"
           Get-ChildItem "C:\llvm-unpack" | ForEach-Object { Write-Output "Extracted: $($_.FullName)" }
-
-          # Try to find the actual folder that was extracted
+          
+          # Get first directory inside the unpack location
           $extractedDir = Get-ChildItem "C:\llvm-unpack" | Where-Object { $_.PSIsContainer } | Select-Object -First 1
           if (-not $extractedDir) {
             throw "Failed to find extracted directory"
           }
-
-          Rename-Item -Path $extractedDir.FullName -NewName "llvm-arm64"
-          Move-Item -Path "C:\llvm-unpack\llvm-arm64" -Destination "C:\llvm-arm64"
-
+          
+          # Rename only if necessary
+          if ($extractedDir.Name -ne "llvm-arm64") {
+            Rename-Item -Path $extractedDir.FullName -NewName "llvm-arm64"
+          }
+          
+          # Move to final location
+          Move-Item -Path "C:\llvm-unpack\llvm-arm64" -Destination "C:\llvm-arm64" -Force
 
       - name: Setup vcpkg and install libxml2
         run: |
