@@ -33,16 +33,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: arm64
-
-      - name: Install 7zip & Ninja
-        run: |
-          choco install ninja 7zip
-          ninja --version
-
       - name: Download and Extract Prebuilt LLVM for ARM64
         shell: pwsh
         run: |
