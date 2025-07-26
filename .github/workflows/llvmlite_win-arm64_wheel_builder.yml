@@ -79,8 +79,7 @@ jobs:
 
       - name: Build wheel
         run: |
-          python -m build
-
+          CMAKE_ARGS="-DLLVM_ENABLE_DIA_SDK=OFF" python -m build
       - name: Upload llvmlite wheel
         uses: actions/upload-artifact@v4
         with:
