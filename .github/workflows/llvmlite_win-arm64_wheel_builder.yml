@@ -49,8 +49,18 @@ jobs:
           $zipUrl = "https://github.com/lowkeyrossi/Clang-LLVM-15.0.7-for-Win-Arm64/releases/download/Release15.0.7/llvm-arm64.zip"
           $zipPath = "llvm-arm64.zip"
           Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
-          Expand-Archive -Path $zipPath -DestinationPath "C:\"
-          Rename-Item -Path "C:\llvm-arm64-15.0.7" -NewName "llvm-arm64"
+          Expand-Archive -Path $zipPath -DestinationPath "C:\llvm-unpack"
+          Get-ChildItem "C:\llvm-unpack" | ForEach-Object { Write-Output "Extracted: $($_.FullName)" }
+
+          # Try to find the actual folder that was extracted
+          $extractedDir = Get-ChildItem "C:\llvm-unpack" | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+          if (-not $extractedDir) {
+            throw "Failed to find extracted directory"
+          }
+
+          Rename-Item -Path $extractedDir.FullName -NewName "llvm-arm64"
+          Move-Item -Path "C:\llvm-unpack\llvm-arm64" -Destination "C:\llvm-arm64"
+
 
       - name: Setup vcpkg and install libxml2
         run: |
