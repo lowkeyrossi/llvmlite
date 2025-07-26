@@ -1,18 +1,16 @@
+name: llvmlite_win-arm64_wheel_builder
 on:
   push:
     branches:
       - WoA
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
-
 env:
   VALIDATION_PYTHON_VERSION: "3.12"
   ARTIFACT_RETENTION_DAYS: 7
   LLVM_VERSION: "15.0.7"
   LLVM_INSTALL_PREFIX: "C:\\llvm-arm64"
-
 jobs:
   win-arm64-build:
     name: win-arm64-build
@@ -24,7 +22,6 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
       fail-fast: false
-
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
@@ -52,8 +49,8 @@ jobs:
           $zipUrl = "https://github.com/lowkeyrossi/Clang-LLVM-15.0.7-for-Win-Arm64/releases/download/Release15.0.7/llvm-arm64.zip"
           $zipPath = "llvm-arm64.zip"
           Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
-          Expand-Archive -Path $zipPath -DestinationPath "C:\\"
-          Rename-Item -Path "C:\\llvm-arm64-15.0.7" -NewName "llvm-arm64"
+          Expand-Archive -Path $zipPath -DestinationPath "C:\"
+          Rename-Item -Path "C:\llvm-arm64-15.0.7" -NewName "llvm-arm64"
 
       - name: Setup vcpkg and install libxml2
         run: |
@@ -67,7 +64,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build wheel setuptools
-          python -m pip install numpy
 
       - name: Configure environment for llvmlite build
         run: |
@@ -91,4 +87,4 @@ jobs:
           if-no-files-found: error
 
       - name: Show Workflow Run ID
-        run: echo "Workflow Run ID: ${{ github.run_id }}"
+        run: "echo \"Workflow Run ID: ${{ github.run_id }}\""
