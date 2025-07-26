@@ -78,8 +78,12 @@ jobs:
           echo "$LLVM_INSTALL_PREFIX/bin" >> $GITHUB_PATH
 
       - name: Build wheel
+        env:
+          # Disable DIA SDK and set additional CMake flags for ARM64
+          CMAKE_ARGS: >-
+            -DLLVM_ENABLE_DIA_SDK=OFF
         run: |
-          CMAKE_ARGS="-DLLVM_ENABLE_DIA_SDK=OFF" python -m build
+          python -m build
       - name: Upload llvmlite wheel
         uses: actions/upload-artifact@v4
         with:
