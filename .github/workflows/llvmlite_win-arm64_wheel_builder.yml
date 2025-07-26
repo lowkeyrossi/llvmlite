@@ -45,10 +45,14 @@ jobs:
           ninja --version
 
       - name: Download LLVM source
+        shell: pwsh
         run: |
-          curl -L -o llvm-${{ env.LLVM_VERSION }}.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_VERSION }}/llvm-project-${{ env.LLVM_VERSION }}.src.tar.xz
-          tar -xf llvm-${{ env.LLVM_VERSION }}.src.tar.xz
-          mv llvm-project-${{ env.LLVM_VERSION }}.src llvm-project
+          Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_VERSION }}/llvm-project-${{ env.LLVM_VERSION }}.src.tar.xz" -OutFile "llvm-${{ env.LLVM_VERSION }}.src.tar.xz"
+          # Use 7-Zip to extract (handles symlinks better on Windows)
+          7z x "llvm-${{ env.LLVM_VERSION }}.src.tar.xz"
+          7z x "llvm-${{ env.LLVM_VERSION }}.src.tar"
+          Remove-Item "llvm-${{ env.LLVM_VERSION }}.src.tar"
+          Rename-Item "llvm-project-${{ env.LLVM_VERSION }}.src" "llvm-project"
 
       - name: Build LLVM-Dev for Win-ARM64
         run: |
@@ -79,7 +83,8 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install build wheel setuptools
-          
+          python -m pip install numpy
+
       - name: Configure environment for llvmlite build
         run: |
           echo "LLVM_CONFIG=${{ env.LLVM_INSTALL_PREFIX }}\\lib\\cmake\\llvm\\LLVMConfig.cmake" >> $GITHUB_ENV
