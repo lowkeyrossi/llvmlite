@@ -153,19 +153,34 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-      
+          
           $version = "15.0.7"
           $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$version/llvm-project-$version.src.tar.xz"
           $output = "llvm.tar.xz"
           Invoke-WebRequest $url -OutFile $output
-      
+          
           # Extract tar.xz (requires 7zip on GitHub-hosted runners)
           7z x $output -o"temp"
-          7z x "temp\llvm-project-$version.src.tar" -o"temp"
-      
-          Rename-Item -Path "temp\llvm-project-$version.src" -NewName "llvm"
+          
+          # Get the actual tar file name after extraction
+          $tarFile = Get-ChildItem -Path "temp" -Filter "*.tar" | Select-Object -First 1
+          if (-not $tarFile) {
+              throw "No tar file found in temp directory"
+          }
+          
+          Write-Host "Found tar file: $($tarFile.Name)"
+          7z x "temp\$($tarFile.Name)" -o"temp"
+          
+          # Find the extracted directory
+          $extractedDir = Get-ChildItem -Path "temp" -Directory | Where-Object { $_.Name -like "llvm-project-*" } | Select-Object -First 1
+          if (-not $extractedDir) {
+              throw "No llvm-project directory found after extraction"
+          }
+          
+          Write-Host "Found extracted directory: $($extractedDir.Name)"
+          Rename-Item -Path "temp\$($extractedDir.Name)" -NewName "llvm"
           Move-Item -Path "temp\llvm" -Destination .
-      
+          
           Remove-Item -Recurse -Force "temp"
           Remove-Item $output
 
