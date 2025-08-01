@@ -148,6 +148,27 @@ jobs:
           conda build "./conda-recipes/${{ matrix.recipe }}" "--output-folder=${CONDA_CHANNEL_DIR}" "${EXTRA_ARGS[@]}"
           ls -lah "${CONDA_CHANNEL_DIR}"
 
+      - name: Download and extract LLVM source for native build
+        if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+      
+          $version = "15.0.7"
+          $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$version/llvm-project-$version.src.tar.xz"
+          $output = "llvm.tar.xz"
+          Invoke-WebRequest $url -OutFile $output
+      
+          # Extract tar.xz (requires 7zip on GitHub-hosted runners)
+          7z x $output -o"temp"
+          7z x "temp\llvm-project-$version.src.tar" -o"temp"
+      
+          Rename-Item -Path "temp\llvm-project-$version.src" -NewName "llvm"
+          Move-Item -Path "temp\llvm" -Destination .
+      
+          Remove-Item -Recurse -Force "temp"
+          Remove-Item $output
+
       - name: Build llvmdev package
         if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
         shell: cmd
