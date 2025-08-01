@@ -29,8 +29,8 @@ if not exist "%VCPKG_ROOT%" (
   cd ..
 )
 
-REM Install dependencies using vcpkg
-call "%VCPKG_ROOT%\vcpkg.exe" install zlib:arm64-windows zstd:arm64-windows libxml2:arm64-windows
+REM Install dependencies using vcpkg (using static libraries)
+call "%VCPKG_ROOT%\vcpkg.exe" install zlib:arm64-windows-static zstd:arm64-windows-static libxml2:arm64-windows-static
 if %ERRORLEVEL% neq 0 exit /B 1
 
 REM Download and extract LLVM source if not present
@@ -57,7 +57,7 @@ cmake -G "Ninja" ^
     -DCMAKE_BUILD_TYPE=Release ^
     -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% ^
     -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake ^
-    -DVCPKG_TARGET_TRIPLET=arm64-windows ^
+    -DVCPKG_TARGET_TRIPLET=arm64-windows-static ^
     -DLLVM_USE_INTEL_JITEVENTS=ON ^
     -DLLVM_ENABLE_LIBXML2=FORCE_ON ^
     -DLLVM_ENABLE_RTTI=ON ^
