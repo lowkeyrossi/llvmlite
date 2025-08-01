@@ -1,32 +1,41 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Set LLVM version tag
+REM === Config ===
 set "LLVM_TAG=llvmorg-15.0.7"
 set "INSTALL_DIR=C:\llvm-arm64"
 
-REM Locate Visual Studio 2022 installation path
+REM === Find Visual Studio 2022 installation path ===
 for /F "usebackq tokens=*" %%i in (`vswhere.exe -nologo -products * -version "[17.0,18.0)" -property installationPath`) do (
   set "VSINSTALLDIR=%%i"
 )
 
 if not exist "!VSINSTALLDIR!" (
-  echo [ERROR] Could not find Visual Studio 2022.
+  echo [ERROR] Could not find Visual Studio 2022 installation.
   exit /B 1
 )
 
 echo [INFO] Using Visual Studio at: !VSINSTALLDIR!
 
-REM Set up MSVC environment for native ARM64 compilation
-call "!VSINSTALLDIR!\VC\Auxiliary\Build\vcvarsall.bat" arm64
+REM === Setup MSVC environment for native ARM64 compilation ===
+call "!VSINSTALLDIR!\VC\Auxiliary\Build\vcvarsarm64.bat"
 if errorlevel 1 exit /B 1
 
-REM Clone LLVM repository using sparse checkout to reduce size and skip symlinks
+REM === Verify cl.exe availability ===
+where cl.exe >nul 2>&1
+if errorlevel 1 (
+  echo [ERROR] cl.exe not found in PATH after vcvarsarm64.bat call
+  exit /B 1
+)
+echo [INFO] cl.exe found in PATH
+
+REM === Remove old llvm-project if exists ===
 if exist llvm-project (
   echo [INFO] Removing existing llvm-project directory...
   rmdir /s /q llvm-project
 )
 
+REM === Clone LLVM source with sparse checkout ===
 echo [INFO] Cloning LLVM source from GitHub...
 git clone --depth 1 --branch %LLVM_TAG% https://github.com/llvm/llvm-project.git llvm-project || exit /B 1
 cd llvm-project
@@ -35,17 +44,12 @@ git sparse-checkout set llvm clang lld compiler-rt || exit /B 1
 git sparse-checkout reapply || exit /B 1
 cd ..
 
-REM Clean and create build directory
+REM === Clean and create build directory ===
 if exist build rmdir /s /q build
 mkdir build
 cd build
 
-REM Set build flags
-set "CXXFLAGS=-MD"
-set "CC=cl.exe"
-set "CXX=cl.exe"
-
-REM Configure CMake
+REM === Configure CMake ===
 cmake -G "Ninja" ^
   -DCMAKE_BUILD_TYPE=Release ^
   -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% ^
@@ -80,11 +84,13 @@ cmake -G "Ninja" ^
   -DCOMPILER_RT_INCLUDE_TESTS=OFF ^
   ..\llvm-project\llvm || exit /B 1
 
-REM Build and install
+REM === Build and install ===
 cmake --build . || exit /B 1
 cmake --build . --target install || exit /B 1
 
 echo [INFO] LLVM build and install completed successfully.
 
-REM Optional: Show install path content (for packaging/debug)
+REM === Optional: Show install path content (for packaging/debug) ===
 dir /s /b "%INSTALL_DIR%"
+
+endlocal
