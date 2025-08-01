@@ -1,36 +1,68 @@
 @echo off
 setlocal enabledelayedexpansion
 
-REM Locate Visual Studio 2022 installation path
+REM ==============================================
+REM Configuration
+REM ==============================================
+set LLVM_VERSION=15.0.7
+set LLVM_ARCHIVE=llvm-%LLVM_VERSION%.src.tar.xz
+set LLVM_TAR=llvm-%LLVM_VERSION%.src.tar
+set LLVM_FOLDER=llvm-project-%LLVM_VERSION%.src
+set LLVM_DIR=llvm
+
+REM ==============================================
+REM Download and extract LLVM source if not present
+REM ==============================================
+if not exist %LLVM_DIR%\ (
+    echo [INFO] Downloading LLVM %LLVM_VERSION% source...
+    powershell -Command "Invoke-WebRequest -Uri 'https://github.com/llvm/llvm-project/releases/download/llvmorg-%LLVM_VERSION%/llvm-project-%LLVM_VERSION%.src.tar.xz' -OutFile '%LLVM_ARCHIVE%'"
+    
+    echo [INFO] Extracting LLVM .tar.xz...
+    7z x %LLVM_ARCHIVE% >nul || exit /B 1
+    echo [INFO] Extracting LLVM .tar...
+    7z x %LLVM_TAR% >nul || exit /B 1
+
+    echo [INFO] Renaming extracted directory...
+    ren %LLVM_FOLDER% %LLVM_DIR%
+
+    del %LLVM_ARCHIVE%
+    del %LLVM_TAR%
+)
+
+REM ==============================================
+REM Locate Visual Studio
+REM ==============================================
 for /F "usebackq tokens=*" %%i in (`vswhere.exe -nologo -products * -version "[17.0,18.0)" -property installationPath`) do (
-  set "VSINSTALLDIR=%%i"
+    set "VSINSTALLDIR=%%i"
 )
-
 if not exist "!VSINSTALLDIR!" (
-  echo [ERROR] Could not find Visual Studio 2022.
-  exit /B 1
+    echo [ERROR] Could not find Visual Studio 2022.
+    exit /B 1
 )
-
 echo [INFO] Using Visual Studio at: !VSINSTALLDIR!
 
-REM Set up MSVC environment for native ARM64 compilation
+REM ==============================================
+REM Set up MSVC environment for ARM64
+REM ==============================================
 call "!VSINSTALLDIR!\VC\Auxiliary\Build\vcvarsall.bat" arm64
 if errorlevel 1 exit /B 1
 
-REM Define install directory
+REM ==============================================
+REM Prepare build directory
+REM ==============================================
 set INSTALL_DIR=C:\llvm-arm64
 
-REM Clean and create build and install directories
 if exist build rmdir /s /q build
 mkdir build
 cd build
 
-REM Set build flags
 set "CXXFLAGS=-MD"
 set "CC=cl.exe"
 set "CXX=cl.exe"
 
-REM Configure CMake
+REM ==============================================
+REM Run CMake configuration
+REM ==============================================
 cmake -G "Ninja" ^
   -DCMAKE_BUILD_TYPE=Release ^
   -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% ^
@@ -64,14 +96,17 @@ cmake -G "Ninja" ^
   -DCOMPILER_RT_BUILD_ORC=OFF ^
   -DCOMPILER_RT_INCLUDE_TESTS=OFF ^
   %~dp0..\..\llvm
-
 if errorlevel 1 exit /B 1
 
-REM Build and install
+REM ==============================================
+REM Build and install LLVM
+REM ==============================================
 cmake --build . || exit /B 1
 cmake --build . --target install || exit /B 1
 
 echo [INFO] LLVM build and install completed successfully.
 
-REM Optional: Show install path content (for packaging/debug)
+REM ==============================================
+REM Optional: List installed files
+REM ==============================================
 dir /s /b "%INSTALL_DIR%"
