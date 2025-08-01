@@ -32,9 +32,10 @@ git clone --depth 1 --branch %LLVM_TAG% https://github.com/llvm/llvm-project.git
 cd llvm-project
 git sparse-checkout init --cone || exit /B 1
 git sparse-checkout set llvm clang lld compiler-rt || exit /B 1
+git sparse-checkout reapply || exit /B 1
 cd ..
 
-REM Clean and create build and install directories
+REM Clean and create build directory
 if exist build rmdir /s /q build
 mkdir build
 cd build
@@ -77,7 +78,7 @@ cmake -G "Ninja" ^
   -DCOMPILER_RT_BUILD_GWP_ASAN=OFF ^
   -DCOMPILER_RT_BUILD_ORC=OFF ^
   -DCOMPILER_RT_INCLUDE_TESTS=OFF ^
-  %~dp0llvm-project\llvm || exit /B 1
+  ..\llvm-project\llvm || exit /B 1
 
 REM Build and install
 cmake --build . || exit /B 1
