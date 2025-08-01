@@ -10,7 +10,7 @@ if not exist "%VSINSTALLDIR%" (
   exit /B 1
 )
 
-call "%VSINSTALLDIR%VC\\Auxiliary\\Build\\vcvarsall.bat" x64_arm64
+call "%VSINSTALLDIR%VC\\Auxiliary\\Build\\vcvarsall.bat" arm64
 
 REM Set version and paths
 set LLVM_VERSION=15.0.7
