@@ -141,15 +141,6 @@ jobs:
           fi
           conda build "./conda-recipes/${{ matrix.recipe }}" "--output-folder=${CONDA_CHANNEL_DIR}" "${EXTRA_ARGS[@]}"
           ls -lah "${CONDA_CHANNEL_DIR}"
-      - name: Download LLVM source
-        if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
-        shell: pwsh
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_VERSION }}/llvm-project-${{ env.LLVM_VERSION }}.src.tar.xz" -OutFile "llvm-${{ env.LLVM_VERSION }}.src.tar.xz"
-          7z x "llvm-${{ env.LLVM_VERSION }}.src.tar.xz"
-          7z x "llvm-${{ env.LLVM_VERSION }}.src.tar"
-          Remove-Item "llvm-${{ env.LLVM_VERSION }}.src.tar"
-          Rename-Item "llvm-project-${{ env.LLVM_VERSION }}.src" "llvm"
 
       - name: Build llvmdev package
         if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
