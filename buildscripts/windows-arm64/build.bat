@@ -17,6 +17,21 @@ set LLVM_VERSION=15.0.7
 set BUILD_DIR=%CD%\build-arm64
 set INSTALL_DIR=C:\llvm-arm64
 set SOURCE_DIR=%CD%\llvm-project-%LLVM_VERSION%.src
+set VCPKG_ROOT=%CD%\vcpkg
+
+REM Install vcpkg if not present
+if not exist "%VCPKG_ROOT%" (
+  git clone https://github.com/Microsoft/vcpkg.git
+  if %ERRORLEVEL% neq 0 exit /B 1
+  cd vcpkg
+  call bootstrap-vcpkg.bat
+  if %ERRORLEVEL% neq 0 exit /B 1
+  cd ..
+)
+
+REM Install dependencies using vcpkg
+call "%VCPKG_ROOT%\vcpkg.exe" install zlib:arm64-windows zstd:arm64-windows libxml2:arm64-windows
+if %ERRORLEVEL% neq 0 exit /B 1
 
 REM Download and extract LLVM source if not present
 if not exist "%SOURCE_DIR%" (
@@ -41,6 +56,8 @@ REM Configure with CMake
 cmake -G "Ninja" ^
     -DCMAKE_BUILD_TYPE=Release ^
     -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% ^
+    -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake ^
+    -DVCPKG_TARGET_TRIPLET=arm64-windows ^
     -DLLVM_USE_INTEL_JITEVENTS=ON ^
     -DLLVM_ENABLE_LIBXML2=FORCE_ON ^
     -DLLVM_ENABLE_RTTI=ON ^
@@ -55,6 +72,22 @@ cmake -G "Ninja" ^
     -DLLVM_UTILS_INSTALL_DIR=libexec\llvm ^
     -DLLVM_BUILD_LLVM_C_DYLIB=OFF ^
     -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly ^
+    -DCMAKE_POLICY_DEFAULT_CMP0111=NEW ^
+    -DLLVM_ENABLE_PROJECTS="lld;compiler-rt" ^
+    -DLLVM_ENABLE_ASSERTIONS=ON ^
+    -DLLVM_ENABLE_DIA_SDK=OFF ^
+    -DCOMPILER_RT_BUILD_BUILTINS=ON ^
+    -DCOMPILER_RT_BUILTINS_HIDE_SYMBOLS=OFF ^
+    -DCOMPILER_RT_BUILD_LIBFUZZER=OFF ^
+    -DCOMPILER_RT_BUILD_CRT=OFF ^
+    -DCOMPILER_RT_BUILD_MEMPROF=OFF ^
+    -DCOMPILER_RT_BUILD_PROFILE=OFF ^
+    -DCOMPILER_RT_BUILD_SANITIZERS=OFF ^
+    -DCOMPILER_RT_BUILD_XRAY=OFF ^
+    -DCOMPILER_RT_BUILD_GWP_ASAN=OFF ^
+    -DCOMPILER_RT_BUILD_ORC=OFF ^
+    -DCOMPILER_RT_INCLUDE_TESTS=OFF ^
+    "%SOURCE_DIR%\llvm"-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly ^
     -DCMAKE_POLICY_DEFAULT_CMP0111=NEW ^
     -DLLVM_ENABLE_PROJECTS="lld;compiler-rt" ^
     -DLLVM_ENABLE_ASSERTIONS=ON ^
