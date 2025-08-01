@@ -15,6 +15,7 @@ runner_mapping = {
     "osx-64": "macos-13",
     "osx-arm64": "macos-14",
     "win-64": "windows-2025",
+    "win-arm64": "windows-11-arm",
 }
 
 default_include = [
@@ -71,6 +72,17 @@ default_include = [
     {
         "runner": runner_mapping["win-64"],
         "platform": "win-64",
+        "recipe": "llvmdev_for_wheel",
+    },
+    # win-arm64
+    {
+        "runner": runner_mapping["win-arm64"],
+        "platform": "win-arm64",
+        "recipe": "llvmdev",
+    },
+    {
+        "runner": runner_mapping["win-arm64"],
+        "platform": "win-arm64",
         "recipe": "llvmdev_for_wheel",
     },
 ]
