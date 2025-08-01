@@ -48,6 +48,7 @@ concurrency:
 
 env:
   ARTIFACT_RETENTION_DAYS: 7
+  LLVM_VERSION: 15.0.7
 
 jobs:
 
@@ -68,7 +69,6 @@ jobs:
           GITHUB_WORKFLOW_INPUT: ${{ toJson(github.event.inputs) }}
         run: |
           ./buildscripts/github/llvmdev_evaluate.py
-
   build:
     needs: check
     name: ${{ matrix.recipe }}-${{ matrix.platform }}
@@ -87,7 +87,6 @@ jobs:
       - name: Setup platform-specific requirements
         run: |
           source ./buildscripts/github/setup_platform.sh "${{ matrix.platform }}"
-
       - name: Setup Miniconda
         if: matrix.platform != 'win-arm64'
         uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f # v3.2.0
@@ -113,27 +112,22 @@ jobs:
             MANYLINUX_IMAGE="quay.io/pypa/manylinux_2_28_aarch64"
             MINICONDA_FILE="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh"
           fi
-
           echo "Building in manylinux container for ${{ matrix.platform }}"
           mkdir -p docker_output
           docker run --rm \
             -v "$(pwd):/root/llvmlite" \
             "$MANYLINUX_IMAGE" \
             bash -c "git config --global --add safe.directory /root/llvmlite && /root/llvmlite/buildscripts/manylinux/build_llvmdev.sh $MINICONDA_FILE"
-
           sudo chown -R "$(id -u):$(id -g)" docker_output
-
           # The script outputs to docker_output/<platform>/*.conda
           # Move the package to the upload directory.
           mkdir -p "${CONDA_CHANNEL_DIR}"
           mv docker_output/*/*.conda "${CONDA_CHANNEL_DIR}/"
           ls -lah "${CONDA_CHANNEL_DIR}"
-
       - name: Install conda-build
         if: ((matrix.platform != 'linux-64' && matrix.platform != 'linux-aarch64') || matrix.recipe != 'llvmdev_for_wheel')  && matrix.platform != 'win-arm64'
         run: |
           conda install -c defaults conda-build
-
       - name: Build and test conda package - non-linux platforms
         if: ((matrix.platform != 'linux-64' && matrix.platform != 'linux-aarch64') || matrix.recipe != 'llvmdev_for_wheel')  && matrix.platform != 'win-arm64'
         env:
@@ -147,49 +141,23 @@ jobs:
           fi
           conda build "./conda-recipes/${{ matrix.recipe }}" "--output-folder=${CONDA_CHANNEL_DIR}" "${EXTRA_ARGS[@]}"
           ls -lah "${CONDA_CHANNEL_DIR}"
-
-      - name: Download and extract LLVM source for native build
+      - name: Download LLVM source
         if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          
-          $version = "15.0.7"
-          $url = "https://github.com/llvm/llvm-project/releases/download/llvmorg-$version/llvm-project-$version.src.tar.xz"
-          $output = "llvm.tar.xz"
-          Invoke-WebRequest $url -OutFile $output
-          
-          # Extract tar.xz (requires 7zip on GitHub-hosted runners)
-          7z x $output -o"temp"
-          
-          # Get the actual tar file name after extraction
-          $tarFile = Get-ChildItem -Path "temp" -Filter "*.tar" | Select-Object -First 1
-          if (-not $tarFile) {
-              throw "No tar file found in temp directory"
-          }
-          
-          Write-Host "Found tar file: $($tarFile.Name)"
-          7z x "temp\$($tarFile.Name)" -o"temp"
-          
-          # Find the extracted directory
-          $extractedDir = Get-ChildItem -Path "temp" -Directory | Where-Object { $_.Name -like "llvm-project-*" } | Select-Object -First 1
-          if (-not $extractedDir) {
-              throw "No llvm-project directory found after extraction"
-          }
-          
-          Write-Host "Found extracted directory: $($extractedDir.Name)"
-          Rename-Item -Path "temp\$($extractedDir.Name)" -NewName "llvm"
-          Move-Item -Path "temp\llvm" -Destination .
-          
-          Remove-Item -Recurse -Force "temp"
-          Remove-Item $output
+          Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_VERSION }}/llvm-project-${{ env.LLVM_VERSION }}.src.tar.xz" -OutFile "llvm-${{ env.LLVM_VERSION }}.src.tar.xz"
+          7z x "llvm-${{ env.LLVM_VERSION }}.src.tar.xz"
+          7z x "llvm-${{ env.LLVM_VERSION }}.src.tar"
+          Remove-Item "llvm-${{ env.LLVM_VERSION }}.src.tar"
+          Rename-Item "llvm-project-${{ env.LLVM_VERSION }}.src" "llvm"
+          Get-ChildItem -Path "llvm" | Select-Object -First 10 | ForEach-Object { Write-Host "  $($_.Name)" }
 
       - name: Build llvmdev package
         if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
         shell: cmd
         run: |
           call buildscripts\windows-arm64\build.bat
-
       - name: Upload native ARM64 build output
         if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
         uses: actions/upload-artifact@v4
