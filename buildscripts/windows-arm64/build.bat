@@ -29,7 +29,7 @@ if not exist "%VCPKG_ROOT%" (
   cd ..
 )
 
-REM Install dependencies using vcpkg (using static libraries)
+REM Install dependencies using vcpkg (using static libraries to avoid import lib issues)
 call "%VCPKG_ROOT%\vcpkg.exe" install zlib:arm64-windows-static zstd:arm64-windows-static libxml2:arm64-windows-static
 if %ERRORLEVEL% neq 0 exit /B 1
 
@@ -52,7 +52,7 @@ set "CXXFLAGS=-MD"
 set "CC=cl.exe"
 set "CXX=cl.exe"
 
-REM Configure with CMake
+REM Configure with CMake - Fixed duplicate lines and improved configuration
 cmake -G "Ninja" ^
     -DCMAKE_BUILD_TYPE=Release ^
     -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% ^
@@ -87,22 +87,8 @@ cmake -G "Ninja" ^
     -DCOMPILER_RT_BUILD_GWP_ASAN=OFF ^
     -DCOMPILER_RT_BUILD_ORC=OFF ^
     -DCOMPILER_RT_INCLUDE_TESTS=OFF ^
-    "%SOURCE_DIR%\llvm"-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly ^
-    -DCMAKE_POLICY_DEFAULT_CMP0111=NEW ^
-    -DLLVM_ENABLE_PROJECTS="lld;compiler-rt" ^
-    -DLLVM_ENABLE_ASSERTIONS=ON ^
-    -DLLVM_ENABLE_DIA_SDK=OFF ^
-    -DCOMPILER_RT_BUILD_BUILTINS=ON ^
-    -DCOMPILER_RT_BUILTINS_HIDE_SYMBOLS=OFF ^
-    -DCOMPILER_RT_BUILD_LIBFUZZER=OFF ^
-    -DCOMPILER_RT_BUILD_CRT=OFF ^
-    -DCOMPILER_RT_BUILD_MEMPROF=OFF ^
-    -DCOMPILER_RT_BUILD_PROFILE=OFF ^
-    -DCOMPILER_RT_BUILD_SANITIZERS=OFF ^
-    -DCOMPILER_RT_BUILD_XRAY=OFF ^
-    -DCOMPILER_RT_BUILD_GWP_ASAN=OFF ^
-    -DCOMPILER_RT_BUILD_ORC=OFF ^
-    -DCOMPILER_RT_INCLUDE_TESTS=OFF ^
+    -DZSTD_INCLUDE_DIR=%VCPKG_ROOT%\installed\arm64-windows-static\include ^
+    -DZSTD_LIBRARY=%VCPKG_ROOT%\installed\arm64-windows-static\lib\zstd.lib ^
     "%SOURCE_DIR%\llvm"
 
 if %ERRORLEVEL% neq 0 exit /B 1
