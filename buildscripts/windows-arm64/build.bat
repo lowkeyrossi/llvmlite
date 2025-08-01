@@ -18,22 +18,12 @@ if not exist "!VSINSTALLDIR!" (
 echo [INFO] Using Visual Studio at: !VSINSTALLDIR!
 
 REM === Setup MSVC environment for native ARM64 compilation ===
-call "!VSINSTALLDIR!\VC\Auxiliary\Build\vcvarsarm64.bat"
-if errorlevel 1 exit /B 1
-
-REM === Verify cl.exe availability ===
-where cl.exe >nul 2>&1
+call "!VSINSTALLDIR!\VC\Auxiliary\Build\vcvarsall.bat" arm64
 if errorlevel 1 (
-  echo [ERROR] cl.exe not found in PATH after vcvarsarm64.bat call
+  echo [ERROR] Failed to initialize MSVC environment with vcvarsall.bat arm64
   exit /B 1
 )
-echo [INFO] cl.exe found in PATH
 
-REM === Remove old llvm-project if exists ===
-if exist llvm-project (
-  echo [INFO] Removing existing llvm-project directory...
-  rmdir /s /q llvm-project
-)
 
 REM === Clone LLVM source with sparse checkout ===
 echo [INFO] Cloning LLVM source from GitHub...
