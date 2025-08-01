@@ -29,8 +29,13 @@ if not exist "%VCPKG_ROOT%" (
   cd ..
 )
 
-REM Install dependencies using vcpkg (using static libraries to avoid import lib issues)
-call "%VCPKG_ROOT%\vcpkg.exe" install zlib:arm64-windows-static zstd:arm64-windows-static libxml2:arm64-windows-static
+REM Clean up any existing zstd installations to avoid conflicts
+call "%VCPKG_ROOT%\vcpkg.exe" remove zstd --recurse 2>nul
+call "%VCPKG_ROOT%\vcpkg.exe" remove zstd:arm64-windows --recurse 2>nul
+call "%VCPKG_ROOT%\vcpkg.exe" remove zstd:arm64-windows-static --recurse 2>nul
+
+REM Install only essential dependencies (skip zstd entirely)
+call "%VCPKG_ROOT%\vcpkg.exe" install zlib:arm64-windows-static libxml2:arm64-windows-static
 if %ERRORLEVEL% neq 0 exit /B 1
 
 REM Download and extract LLVM source if not present
@@ -52,17 +57,19 @@ set "CXXFLAGS=-MD"
 set "CC=cl.exe"
 set "CXX=cl.exe"
 
-REM Configure with CMake - Fixed duplicate lines and improved configuration
+REM Configure with CMake - Disable zstd completely to avoid issues
 cmake -G "Ninja" ^
     -DCMAKE_BUILD_TYPE=Release ^
     -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% ^
     -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake ^
     -DVCPKG_TARGET_TRIPLET=arm64-windows-static ^
+    -DVCPKG_LIBRARY_LINKAGE=static ^
+    -DVCPKG_CRT_LINKAGE=dynamic ^
     -DLLVM_USE_INTEL_JITEVENTS=ON ^
     -DLLVM_ENABLE_LIBXML2=FORCE_ON ^
     -DLLVM_ENABLE_RTTI=ON ^
     -DLLVM_ENABLE_ZLIB=FORCE_ON ^
-    -DLLVM_ENABLE_ZSTD=FORCE_ON ^
+    -DLLVM_ENABLE_ZSTD=OFF ^
     -DLLVM_INCLUDE_BENCHMARKS=OFF ^
     -DLLVM_INCLUDE_DOCS=OFF ^
     -DLLVM_INCLUDE_EXAMPLES=OFF ^
@@ -87,8 +94,6 @@ cmake -G "Ninja" ^
     -DCOMPILER_RT_BUILD_GWP_ASAN=OFF ^
     -DCOMPILER_RT_BUILD_ORC=OFF ^
     -DCOMPILER_RT_INCLUDE_TESTS=OFF ^
-    -DZSTD_INCLUDE_DIR=%VCPKG_ROOT%\installed\arm64-windows-static\include ^
-    -DZSTD_LIBRARY=%VCPKG_ROOT%\installed\arm64-windows-static\lib\zstd.lib ^
     "%SOURCE_DIR%\llvm"
 
 if %ERRORLEVEL% neq 0 exit /B 1
@@ -102,3 +107,6 @@ cmake --build . --target install --config Release
 if %ERRORLEVEL% neq 0 exit /B 1
 
 cd ..
+
+echo Build completed successfully!
+echo LLVM installed to: %INSTALL_DIR%
