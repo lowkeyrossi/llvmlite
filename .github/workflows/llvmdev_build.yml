@@ -148,6 +148,20 @@ jobs:
           conda build "./conda-recipes/${{ matrix.recipe }}" "--output-folder=${CONDA_CHANNEL_DIR}" "${EXTRA_ARGS[@]}"
           ls -lah "${CONDA_CHANNEL_DIR}"
 
+      - name: Build llvmdev package
+        if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
+        shell: cmd
+        run: |
+          call buildscripts\windows-arm64\build.bat
+
+      - name: Upload native ARM64 build output
+        if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
+        uses: actions/upload-artifact@v4
+        with:
+          name: llvmdev_win-arm64
+          path: C:\llvm-arm64
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+
       - name: Upload conda package
         if: matrix.platform != 'win-arm64'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
