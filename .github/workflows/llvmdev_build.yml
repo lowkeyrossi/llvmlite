@@ -145,32 +145,11 @@ jobs:
         if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
         shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          Write-Host "Downloading LLVM ${{ env.LLVM_VERSION }} source..."
           Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_VERSION }}/llvm-project-${{ env.LLVM_VERSION }}.src.tar.xz" -OutFile "llvm-${{ env.LLVM_VERSION }}.src.tar.xz"
-          
-          Write-Host "Extracting tar.xz archive..."
-          $result1 = & 7z x "llvm-${{ env.LLVM_VERSION }}.src.tar.xz" 2>&1
-          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) {
-            throw "Failed to extract .tar.xz file. Exit code: $LASTEXITCODE"
-          }
-          
-          Write-Host "Extracting tar archive (symbolic link warnings are normal)..."
-          $result2 = & 7z x "llvm-${{ env.LLVM_VERSION }}.src.tar" 2>&1
-          # 7zip returns exit code 1 when symbolic links are ignored, but extraction succeeds
-          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) {
-            throw "Failed to extract .tar file. Exit code: $LASTEXITCODE"
-          }
-          
-          Write-Host "Cleaning up tar file..."
+          7z x "llvm-${{ env.LLVM_VERSION }}.src.tar.xz"
+          7z x "llvm-${{ env.LLVM_VERSION }}.src.tar"
           Remove-Item "llvm-${{ env.LLVM_VERSION }}.src.tar"
-          
-          Write-Host "Renaming extracted directory..."
           Rename-Item "llvm-project-${{ env.LLVM_VERSION }}.src" "llvm"
-          
-          Write-Host "LLVM source extracted successfully to 'llvm' directory"
-          Write-Host "Contents:"
-          Get-ChildItem -Path "llvm" | Select-Object -First 10 | ForEach-Object { Write-Host "  $($_.Name)" }
 
       - name: Build llvmdev package
         if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
