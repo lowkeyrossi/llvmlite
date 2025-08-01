@@ -98,7 +98,7 @@ jobs:
           run-post: false
 
       - name: Build and test conda package in manylinux - linux platforms
-        if: (matrix.platform == 'linux-64' || matrix.platform == 'linux-aarch64') && matrix.recipe == 'llvmdev_for_wheel'
+        if: (matrix.platform == 'linux-64' || matrix.platform == 'linux-aarch64') && matrix.recipe == 'llvmdev_for_wheel' && matrix.platform != 'win-arm64'
         env:
           CONDA_CHANNEL_DIR: conda_channel_dir
         run: |
