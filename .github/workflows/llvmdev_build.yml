@@ -153,6 +153,7 @@ jobs:
           "$VCPKG_DIR/vcpkg" remove zstd:arm64-windows-static --recurse || true
 
           # Install required dependencies
+          "$VCPKG_DIR/vcpkg" install ninja
           "$VCPKG_DIR/vcpkg" install zlib:arm64-windows-static libxml2:arm64-windows-static
         env:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
