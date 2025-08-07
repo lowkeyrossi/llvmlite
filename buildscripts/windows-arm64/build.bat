@@ -17,32 +17,18 @@ set LLVM_VERSION=15.0.7
 set BUILD_DIR=%CD%\build-arm64
 set INSTALL_DIR=C:\llvm-arm64
 set SOURCE_DIR=%CD%\llvm-project-%LLVM_VERSION%.src
-set VCPKG_ROOT=%CD%\vcpkg
 
-REM Install vcpkg if not present
+REM VCPKG root is assumed to be set by the GitHub workflow
 if not exist "%VCPKG_ROOT%" (
-  git clone https://github.com/Microsoft/vcpkg.git
-  if %ERRORLEVEL% neq 0 exit /B 1
-  cd vcpkg
-  call bootstrap-vcpkg.bat
-  if %ERRORLEVEL% neq 0 exit /B 1
-  cd ..
+  echo VCPKG_ROOT is not set or vcpkg is not installed. Please check workflow setup.
+  exit /B 1
 )
-
-REM Clean up any existing zstd installations to avoid conflicts
-call "%VCPKG_ROOT%\vcpkg.exe" remove zstd --recurse 2>nul
-call "%VCPKG_ROOT%\vcpkg.exe" remove zstd:arm64-windows --recurse 2>nul
-call "%VCPKG_ROOT%\vcpkg.exe" remove zstd:arm64-windows-static --recurse 2>nul
-
-REM Install only essential dependencies (skip zstd entirely)
-call "%VCPKG_ROOT%\vcpkg.exe" install zlib:arm64-windows-static libxml2:arm64-windows-static
-if %ERRORLEVEL% neq 0 exit /B 1
 
 REM Download and extract LLVM source if not present
 if not exist "%SOURCE_DIR%" (
   curl -L -o llvm-project-%LLVM_VERSION%.src.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-%LLVM_VERSION%/llvm-project-%LLVM_VERSION%.src.tar.xz
   if %ERRORLEVEL% neq 0 exit /B 1
-  
+
   tar -xf llvm-project-%LLVM_VERSION%.src.tar.xz
   if %ERRORLEVEL% neq 0 exit /B 1
 )
