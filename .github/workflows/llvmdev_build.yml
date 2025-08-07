@@ -134,6 +134,29 @@ jobs:
         run: |
           conda install -c defaults conda-build
 
+      - name: Install vcpkg dependencies (win-arm64 only)
+        if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
+        shell: bash
+        run: |
+          set -ex
+          VCPKG_DIR="${GITHUB_WORKSPACE}/vcpkg"
+
+          if [ ! -d "$VCPKG_DIR" ]; then
+            git clone https://github.com/Microsoft/vcpkg.git "$VCPKG_DIR"
+            cd "$VCPKG_DIR"
+            ./bootstrap-vcpkg.sh
+          fi
+
+          # Remove problematic packages to avoid conflicts
+          "$VCPKG_DIR/vcpkg" remove zstd --recurse || true
+          "$VCPKG_DIR/vcpkg" remove zstd:arm64-windows --recurse || true
+          "$VCPKG_DIR/vcpkg" remove zstd:arm64-windows-static --recurse || true
+
+          # Install required dependencies
+          "$VCPKG_DIR/vcpkg" install zlib:arm64-windows-static libxml2:arm64-windows-static
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
       - name: Build and test conda package - non-linux platforms
         if: ((matrix.platform != 'linux-64' && matrix.platform != 'linux-aarch64') || matrix.recipe != 'llvmdev_for_wheel') && matrix.platform != 'win-arm64'
         env:
