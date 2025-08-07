@@ -134,6 +134,14 @@ jobs:
         run: |
           conda install -c defaults conda-build
 
+      - name: Install Ninja (ARM64)
+        if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/download/v1.13.1/ninja-winarm64.zip" -OutFile "$env:RUNNER_TEMP\ninja.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\ninja.zip" -DestinationPath "$env:RUNNER_TEMP\ninja"
+          echo "$env:RUNNER_TEMP\ninja" | Out-File -Append -FilePath $env:GITHUB_PATH
+
       - name: Install vcpkg dependencies (win-arm64 only)
         if: matrix.platform == 'win-arm64' && matrix.recipe == 'llvmdev'
         shell: bash
@@ -147,13 +155,7 @@ jobs:
             ./bootstrap-vcpkg.sh
           fi
 
-          # Remove problematic packages to avoid conflicts
-          "$VCPKG_DIR/vcpkg" remove zstd --recurse || true
-          "$VCPKG_DIR/vcpkg" remove zstd:arm64-windows --recurse || true
-          "$VCPKG_DIR/vcpkg" remove zstd:arm64-windows-static --recurse || true
-
           # Install required dependencies
-          "$VCPKG_DIR/vcpkg" install ninja
           "$VCPKG_DIR/vcpkg" install zlib:arm64-windows-static libxml2:arm64-windows-static
         env:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
